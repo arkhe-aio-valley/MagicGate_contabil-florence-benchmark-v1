@@ -1,0 +1,125 @@
+schema: magicgate-plan-v1
+name: "Contabil Deterministic Florence Benchmark v1"
+objective: "Construir, testar e validar um software contabil Windows identico em escopo e criterios de aceite para comparar MagicGate, Codex, ChatGPT, Cursor, Copilot e Gemini."
+mode: deterministic
+
+settings:
+  max_attempts_per_task: 3
+  stop_on_hard_stop: true
+  ai_fallback: false
+
+benchmark:
+  id: "contabil-florence-v1"
+  protocol: "Florence"
+  execution_policy: "same-plan-same-requirements"
+  target_os: "Windows"
+  primary_ide: "Visual Studio Code"
+  human_intervention_policy: "Somente intervir quando o executor estiver tecnicamente bloqueado; toda intervencao deve ser registrada."
+  branches:
+    magicgate: "executor/magicgate"
+    codex: "executor/codex"
+    chatgpt: "executor/chatgpt"
+    cursor: "executor/cursor"
+    copilot: "executor/copilot"
+    gemini: "executor/gemini"
+  fairness:
+    immutable_plan: true
+    identical_scope: true
+    identical_acceptance: true
+    identical_seed_data: true
+    identical_test_suite_contract: true
+    executor_may_choose_internal_implementation: true
+    executor_may_change_required_behavior: false
+    executor_may_remove_features: false
+    executor_may_weaken_tests: false
+    executor_may_change_acceptance: false
+  metrics:
+    required: [wall_clock_seconds, active_execution_seconds, human_interventions, pauses, retries, failed_commands, test_runs, tests_passed, tests_failed, tasks_completed, tasks_blocked, files_created, files_modified, commits_created, final_build_success, final_test_success, acceptance_pass_rate]
+    output_file: "artifacts/benchmark/metrics.json"
+
+constraints:
+  - "Executar somente no Windows."
+  - "O workspace deve ser aberto no Visual Studio Code."
+  - "Nao alterar este plano durante uma rodada."
+  - "Nao compartilhar codigo entre branches concorrentes."
+  - "Nao copiar implementacao produzida por outro executor."
+  - "Nao remover requisitos para reduzir tempo."
+  - "Nao substituir testes por validacao manual."
+  - "Nao declarar sucesso com testes falhando."
+  - "Nao usar servicos pagos obrigatorios."
+  - "Nao exigir segredos reais para testes."
+  - "Usar valores monetarios em centavos inteiros no dominio e persistencia."
+  - "Usar datas ISO-8601."
+  - "Manter trilha de auditoria para operacoes contabilmente relevantes."
+
+product:
+  name: "Contabil"
+  required_capabilities:
+    - "Cadastro de empresas."
+    - "Plano de contas."
+    - "Lancamentos contabeis de partida dobrada."
+    - "Livro Diario."
+    - "Livro Razao."
+    - "Balancete de verificacao."
+    - "DRE simplificada."
+    - "Balanco Patrimonial simplificado."
+    - "Cadastro de clientes e fornecedores."
+    - "Contas a pagar e contas a receber."
+    - "Dashboard com indicadores."
+    - "Exportacao CSV dos relatorios."
+    - "Backup e restauracao local."
+    - "Auditoria de alteracoes."
+    - "Autenticacao local."
+  accounting_rules:
+    - "Todo lancamento deve possuir pelo menos duas partidas."
+    - "A soma dos debitos deve ser exatamente igual a soma dos creditos."
+    - "Lancamento desbalanceado deve ser rejeitado."
+    - "Conta inexistente ou inativa nao pode receber nova partida."
+  ui_contract:
+    required_pages: [/login, /dashboard, /empresas, /plano-contas, /lancamentos, /clientes, /fornecedores, /contas-pagar, /contas-receber, /relatorios/diario, /relatorios/razao, /relatorios/balancete, /relatorios/dre, /relatorios/balanco, /configuracoes]
+    requirements:
+      - "Interface em portugues do Brasil."
+      - "Layout desktop responsivo, utilizavel em 1366x768 sem rolagem horizontal global."
+      - "Navegacao lateral persistente apos autenticacao."
+      - "Estados de carregamento, vazio, sucesso e erro devem ser visiveis."
+      - "A identidade visual pode variar sem alterar funcionalidades ou aceite."
+
+technical_contract:
+  architecture:
+    - "Aplicacao web local full-stack executada no Windows."
+    - "Frontend React + TypeScript."
+    - "Backend Python FastAPI."
+    - "Persistencia SQLite."
+    - "API HTTP JSON em /api."
+  minimum_versions:
+    node: "20"
+    python: "3.12"
+  prohibited_shortcuts:
+    - "Nao usar dados estaticos no frontend para simular funcionalidades exigidas."
+    - "Nao substituir SQLite por armazenamento apenas em memoria."
+    - "Nao desabilitar validacoes para fazer testes passarem."
+    - "Nao alterar dados de seed depois do inicio dos testes de aceite."
+
+seed_contract:
+  company: {legal_name: "Empresa Florence Benchmark Ltda", document: "12.345.678/0001-90"}
+  transactions:
+    - {id: "SEED-001", description: "Integralizacao de capital", debit: "1.1.1 Caixa", credit: "3.1.1 Capital Social", amount_cents: 10000000}
+    - {id: "SEED-002", description: "Receita de servicos a vista", debit: "1.1.1 Caixa", credit: "4.1.1 Receita de Servicos", amount_cents: 250000}
+    - {id: "SEED-003", description: "Despesa administrativa paga", debit: "5.1.1 Despesas Administrativas", credit: "1.1.1 Caixa", amount_cents: 50000}
+  expected_totals: {total_debits_cents: 10300000, total_credits_cents: 10300000, cash_balance_cents: 10200000, service_revenue_cents: 250000, administrative_expense_cents: 50000, simplified_net_income_cents: 200000}
+
+tasks:
+  - {id: task-01, title: "Registrar inicio e validar ambiente", depends_on: [], test_command: "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-environment.ps1"}
+  - {id: task-02, title: "Criar esqueleto full-stack reproduzivel", depends_on: [task-01], test_command: "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-scaffold.ps1"}
+  - {id: task-03, title: "Implementar dominio contabil e persistencia", depends_on: [task-02], test_command: "python -m pytest backend/tests/test_domain.py backend/tests/test_accounting.py -q"}
+  - {id: task-04, title: "Implementar autenticacao local", depends_on: [task-03], test_command: "python -m pytest backend/tests/test_auth.py -q"}
+  - {id: task-05, title: "Implementar API funcional", depends_on: [task-03, task-04], test_command: "python -m pytest backend/tests/test_api.py -q"}
+  - {id: task-06, title: "Implementar relatorios contabeis", depends_on: [task-05], test_command: "python -m pytest backend/tests/test_reports.py -q"}
+  - {id: task-07, title: "Implementar financeiro operacional", depends_on: [task-05], test_command: "python -m pytest backend/tests/test_financial.py -q"}
+  - {id: task-08, title: "Implementar frontend completo", depends_on: [task-05, task-06, task-07], test_command: "npm --prefix frontend test -- --run"}
+  - {id: task-09, title: "Implementar backup, restauracao e auditoria", depends_on: [task-05, task-08], test_command: "python -m pytest backend/tests/test_backup_audit.py -q"}
+  - {id: task-10, title: "Aplicar dataset canonico Florence", depends_on: [task-03, task-06], test_command: "python -m pytest backend/tests/test_florence_seed.py -q"}
+  - {id: task-11, title: "Criar suite de verificacao Florence", depends_on: [task-08, task-09, task-10], test_command: "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/florence-verify.ps1"}
+  - {id: task-12, title: "Executar verificacao integrada", depends_on: [task-11], test_command: "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/florence-verify.ps1"}
+  - {id: task-13, title: "Finalizar metricas e manifesto", depends_on: [task-12], test_command: "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-benchmark-artifacts.ps1"}
+  - {id: task-14, title: "Validacao final deterministica", depends_on: [task-13], test_command: "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/florence-final-gate.ps1"}
