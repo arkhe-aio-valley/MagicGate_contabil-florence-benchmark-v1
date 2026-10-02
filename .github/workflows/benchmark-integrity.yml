@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'governance/**'
       - 'executor/**'
     paths:
       - AGENTS.md
@@ -80,7 +81,7 @@ jobs:
           fi
 
           case "$branch" in
-            main|executor/magicgate|executor/codex|executor/chatgpt|executor/cursor|executor/copilot|executor/gemini)
+            main|governance/*|executor/magicgate|executor/codex|executor/chatgpt|executor/cursor|executor/copilot|executor/gemini)
               ;;
             *)
               echo "::error::Branch '$branch' is outside the Florence benchmark branch contract."
@@ -88,9 +89,19 @@ jobs:
               ;;
           esac
 
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" && "$base" == "main" && "$branch" == executor/* ]]; then
-            echo "::error::Executor implementation branches must remain isolated and must not be merged into main during benchmark rounds."
-            exit 1
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" && "$base" == "main" ]]; then
+            case "$branch" in
+              executor/*)
+                echo "::error::Executor implementation branches must remain isolated and must not be merged into main during benchmark rounds."
+                exit 1
+                ;;
+              governance/*)
+                ;;
+              *)
+                echo "::error::Only governance/* branches may propose changes to main during benchmark rounds."
+                exit 1
+                ;;
+            esac
           fi
 
           echo "Florence integrity guard passed for branch '$branch'."
