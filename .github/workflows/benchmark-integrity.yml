@@ -1,0 +1,96 @@
+name: Benchmark Integrity
+
+on:
+  push:
+    branches:
+      - main
+      - 'executor/**'
+    paths:
+      - AGENTS.md
+      - BENCHMARK.md
+      - 'plans/**'
+      - '.github/workflows/benchmark-integrity.yml'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    name: Canonical benchmark integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Verify canonical artifacts
+        shell: bash
+        env:
+          EXPECTED_PLAN_BLOB: 7b6bc07a5fd99c8c43689df65d154944d3a99e8d
+          EXPECTED_AGENTS_BLOB: 8b1a0be426898a22e6e247dfef00b6c8718a6baf
+          EXPECTED_BENCHMARK_BLOB: 8badf1d7b1646a7ebe5489342b613be1c0ffcb39
+          PROTOCOL_BASELINE: 5179e94dbee36d2bc79ef2d195c466b940ffdd8b
+        run: |
+          set -euo pipefail
+
+          verify_blob() {
+            local path="$1"
+            local expected="$2"
+
+            if [[ ! -f "$path" ]]; then
+              echo "::error file=$path::Canonical benchmark artifact is missing."
+              exit 1
+            fi
+
+            local actual
+            actual="$(git hash-object "$path")"
+            if [[ "$actual" != "$expected" ]]; then
+              echo "::error file=$path::Canonical artifact changed. Expected blob $expected, got $actual."
+              exit 1
+            fi
+          }
+
+          verify_blob "plans/contabil-florence-benchmark-v1.yaml" "$EXPECTED_PLAN_BLOB"
+          verify_blob "AGENTS.md" "$EXPECTED_AGENTS_BLOB"
+          verify_blob "BENCHMARK.md" "$EXPECTED_BENCHMARK_BLOB"
+
+          if ! git merge-base --is-ancestor "$PROTOCOL_BASELINE" HEAD; then
+            echo "::error::Current history does not descend from the Florence protocol baseline $PROTOCOL_BASELINE."
+            exit 1
+          fi
+
+      - name: Verify branch isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            branch="$GITHUB_HEAD_REF"
+            base="$GITHUB_BASE_REF"
+          else
+            branch="$GITHUB_REF_NAME"
+            base=""
+          fi
+
+          case "$branch" in
+            main|executor/magicgate|executor/codex|executor/chatgpt|executor/cursor|executor/copilot|executor/gemini)
+              ;;
+            *)
+              echo "::error::Branch '$branch' is outside the Florence benchmark branch contract."
+              exit 1
+              ;;
+          esac
+
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" && "$base" == "main" && "$branch" == executor/* ]]; then
+            echo "::error::Executor implementation branches must remain isolated and must not be merged into main during benchmark rounds."
+            exit 1
+          fi
+
+          echo "Florence integrity guard passed for branch '$branch'."
